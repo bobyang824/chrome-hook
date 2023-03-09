@@ -30,6 +30,7 @@
 #include <Tlhelp32.h>
 #include <Thread>
 #include <fstream>
+#include <winternl.h>
 
 using namespace std;
 #define fs std::filesystem
@@ -38,6 +39,7 @@ using namespace std;
 
 void RunChromeWithDll();
 
+#pragma comment(lib, "Shlwapi.lib")
 #pragma comment(lib, "wbemuuid.lib")
 
 
@@ -50,6 +52,15 @@ void RunChromeWithDll();
     #define IDR_DLL IDR_HOOK_DLL_X861
     #define IDR_TYPE "HOOK_DLL_X86"
 #endif // _WIN64
+
+typedef NTSTATUS(NTAPI* _NtQueryInformationProcess)(
+    HANDLE ProcessHandle,
+    DWORD ProcessInformationclass,
+    PVOID ProcessInformation,
+    DWORD ProcessInformationLength,
+    PDWORD ReturnLength
+    );
+WCHAR* GetProcessCommandLine(HANDLE hProcess);
 
 void RunChromeWithDll()
 {
@@ -366,7 +377,7 @@ BOOL CheckEdgeRun()
     Process32First(hSnapshot, &pe);
 
     DWORD dwChromeId = 0;
-    int iChromeChild = 0;
+    BOOL iChromeChild = FALSE;
     do
     {
         if (isEdge(pe.szExeFile, pe.th32ParentProcessID)) {
@@ -384,12 +395,28 @@ BOOL CheckEdgeRun()
         }
         else {
             if (dwChromeId > 0 && pe.th32ParentProcessID == dwChromeId) {
+                HANDLE Handle = OpenProcess(
+                    PROCESS_QUERY_INFORMATION | PROCESS_VM_READ,
+                    FALSE,
+                    pe.th32ProcessID
+                );
+                if (Handle) {
+                    LPWSTR lpcmd = GetProcessCommandLine(Handle);
+
+                    if (lpcmd && StrStrIW(lpcmd, L"launch-time-ticks")) {
+                        iChromeChild = TRUE;
+                    }
+                    if (lpcmd)
+                        free(lpcmd);
+
+                    CloseHandle(Handle);
+                } 
             }
         }
     } while (Process32Next(hSnapshot, &pe));
     CloseHandle(hSnapshot);
 
-    if (iChromeChild >= 4 && dwChromeId > 0) {
+    if (iChromeChild && dwChromeId > 0) {
         const auto chrome = OpenProcess(PROCESS_TERMINATE | PROCESS_QUERY_INFORMATION, false, dwChromeId);
         OutputDebugStringA("test____________0");
         BOOL bRet = TerminateProcess(chrome, 0);
@@ -447,6 +474,39 @@ int APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hInstPrev, PSTR cmdline, int cmd
         Sleep(10);
     }
     return 0;
+}
+
+WCHAR* GetProcessCommandLine(HANDLE hProcess)
+{
+    UNICODE_STRING commandLine;
+    WCHAR* commandLineContents = NULL;
+    _NtQueryInformationProcess NtQuery = (_NtQueryInformationProcess)GetProcAddress(GetModuleHandleA("ntdll.dll"), "NtQueryInformationProcess");
+
+    if (NtQuery) {
+
+        PROCESS_BASIC_INFORMATION pbi;
+        NTSTATUS isok = NtQuery(hProcess, ProcessBasicInformation, &pbi, sizeof(PROCESS_BASIC_INFORMATION), NULL);
+
+        if (NT_SUCCESS(isok))
+        {
+            PEB peb;
+            RTL_USER_PROCESS_PARAMETERS upps;
+            PVOID rtlUserProcParamsAddress;
+            if (ReadProcessMemory(hProcess, &(((_PEB*)pbi.PebBaseAddress)->ProcessParameters), &rtlUserProcParamsAddress, sizeof(PVOID), NULL))
+            {
+                if (ReadProcessMemory(hProcess,
+                    &(((_RTL_USER_PROCESS_PARAMETERS*)rtlUserProcParamsAddress)->CommandLine),
+                    &commandLine, sizeof(commandLine), NULL)) {
+
+                    commandLineContents = (WCHAR*)malloc(commandLine.Length+sizeof(WCHAR));
+                    memset(commandLineContents, 0, commandLine.Length + sizeof(WCHAR));
+                    ReadProcessMemory(hProcess, commandLine.Buffer,
+                        commandLineContents, commandLine.Length, NULL);
+                }
+            }
+        }
+    }
+    return commandLineContents;
 }
 //
 ///////////////////////////////////////////////////////////////// End of File.

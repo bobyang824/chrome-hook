@@ -58,9 +58,9 @@ BOOL NTAPI HookedGetVersionExW(
 {
     BOOL bRet = OriginalGetVersionExW(lpVersionInformation);
 
-    if (bRet) {
-        lpVersionInformation->dwMajorVersion = 9;
-        lpVersionInformation->dwBuildNumber = 10000;
+    if (bRet && lpVersionInformation) {
+        ///lpVersionInformation->dwMajorVersion = 10;
+        //lpVersionInformation->dwBuildNumber = 10000;
     }
     return bRet;
 }
@@ -76,15 +76,15 @@ BOOL NTAPI HookedGetProductInfo(
     BOOL bRet = OriginalGetProductInfo(dwOSMajorVersion, dwOSMinorVersion, dwSpMajorVersion, dwSpMinorVersion, pdwReturnedProductType);
 
     if (bRet) {
-        *pdwReturnedProductType = PRODUCT_PROFESSIONAL;
+        //*pdwReturnedProductType = PRODUCT_PROFESSIONAL;
     }
     return bRet;
 }
 BOOL NTAPI HookedIsOS(DWORD dwOS)
 {
-    if (dwOS == OS_DOMAINMEMBER)
-        return TRUE;
-    else
+    //if (dwOS == OS_DOMAINMEMBER)
+    //    return TRUE;
+    //else
         return OriginalIsOS(dwOS);
 }
 void InstallHook(LPCSTR dll, LPCSTR function, LPVOID* originalFunction, LPVOID hookedFunction)

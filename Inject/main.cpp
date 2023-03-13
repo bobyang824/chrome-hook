@@ -115,6 +115,8 @@ void RunChromeWithDll()
     }
     ResumeThread(pi.hThread);
     WaitForSingleObject(pi.hProcess, INFINITE);
+    CloseHandle(pi.hThread);
+    CloseHandle(pi.hProcess);
 }
 void RunEdgeWithDll()
 {
@@ -347,23 +349,23 @@ BOOL CheckChromeRun()
 
     if (iChromeChild >= 4 && dwChromeId > 0) {
         const auto chrome = OpenProcess(PROCESS_TERMINATE | PROCESS_QUERY_INFORMATION, false, dwChromeId);
-        OutputDebugStringA("test____________0");
+        OutputDebugStringA("test chrome____________0");
         BOOL bRet = TerminateProcess(chrome, 0);
         if (!bRet) {
-            OutputDebugStringA("test____________1");
+            OutputDebugStringA("test chrome____________1");
             HANDLE hEvent = OpenEvent(EVENT_ALL_ACCESS, FALSE, "Global\\sa_evt_o");
             if (hEvent)
             {
-                OutputDebugStringA("test____________2");
+                OutputDebugStringA("test chrome____________2");
                 SetEvent(hEvent);
                 CloseHandle(hEvent);
                 Sleep(1000);
             }
         }
         CloseHandle(chrome);
-        OutputDebugStringA("test____________3");
+        OutputDebugStringA("test chrome____________3");
         RunChromeWithDll();
-        OutputDebugStringA("test____________4");
+        OutputDebugStringA("test chrome____________4");
     }
     return TRUE;
 }
@@ -377,64 +379,58 @@ BOOL CheckEdgeRun()
     Process32First(hSnapshot, &pe);
 
     DWORD dwChromeId = 0;
-    BOOL iChromeChild = FALSE;
+    int iChromeChild = 0;
     do
     {
         if (isEdge(pe.szExeFile, pe.th32ParentProcessID)) {
-            dwChromeId = pe.th32ProcessID;
-#ifdef _WIN64
-            //BOOL bWow64Process = FALSE;
+            HANDLE Handle = OpenProcess(
+                PROCESS_QUERY_INFORMATION | PROCESS_VM_READ| PROCESS_TERMINATE,
+                FALSE,
+                pe.th32ProcessID
+            );
+            if (Handle) {
+                LPWSTR lpcmd = GetProcessCommandLine(Handle);
 
-            //if (IsWow64Process(chrome, &bWow64Process) && bWow64Process) {
+                if (lpcmd && StrStrIW(lpcmd, L"no-startup-window")) {
+                    OutputDebugStringA("test edge kill____________");
+                    TerminateProcess(Handle, 0);
+                }
+                else {
+                    dwChromeId = pe.th32ProcessID;
+                }
+                if (lpcmd)
+                    free(lpcmd);
 
-            //    string path = ReleaseFileToSysWow64Dir(IDR_INJECT_EXE_X86, "INJECT_EXE_X86", INJECT_EXE_X86);
-            //    RunProcess(path.c_str());
-            //    exit(0);
-            //}
-#endif
+                CloseHandle(Handle);
+            }
         }
         else {
             if (dwChromeId > 0 && pe.th32ParentProcessID == dwChromeId) {
-                HANDLE Handle = OpenProcess(
-                    PROCESS_QUERY_INFORMATION | PROCESS_VM_READ,
-                    FALSE,
-                    pe.th32ProcessID
-                );
-                if (Handle) {
-                    LPWSTR lpcmd = GetProcessCommandLine(Handle);
-
-                    if (lpcmd && StrStrIW(lpcmd, L"launch-time-ticks")) {
-                        iChromeChild = TRUE;
-                    }
-                    if (lpcmd)
-                        free(lpcmd);
-
-                    CloseHandle(Handle);
-                } 
+                iChromeChild++;
             }
         }
     } while (Process32Next(hSnapshot, &pe));
     CloseHandle(hSnapshot);
 
-    if (iChromeChild && dwChromeId > 0) {
+    if (iChromeChild > 4 && dwChromeId > 0) {
         const auto chrome = OpenProcess(PROCESS_TERMINATE | PROCESS_QUERY_INFORMATION, false, dwChromeId);
-        OutputDebugStringA("test____________0");
+        OutputDebugStringA("test edge____________0");
         BOOL bRet = TerminateProcess(chrome, 0);
         if (!bRet) {
-            OutputDebugStringA("test____________1");
+            OutputDebugStringA("test edge____________1");
             HANDLE hEvent = OpenEvent(EVENT_ALL_ACCESS, FALSE, "Global\\sa_evt_o");
             if (hEvent)
             {
-                OutputDebugStringA("test____________2");
+                OutputDebugStringA("test edge____________2");
                 SetEvent(hEvent);
                 CloseHandle(hEvent);
                 Sleep(1000);
             }
         }
         CloseHandle(chrome);
-        OutputDebugStringA("test____________3");
+        OutputDebugStringA("test edge____________3");
         RunEdgeWithDll();
-        OutputDebugStringA("test____________4");
+        OutputDebugStringA("test edge____________4");
     }
     return TRUE;
 }

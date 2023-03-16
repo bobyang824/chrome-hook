@@ -213,14 +213,6 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <None Include="..\..\x64\Release\Test64.dll" />
-    <None Include="..\..\x64\Release\test64.exe" />
-    <None Include="..\..\x86\Release\Test32.dll" />
-    <None Include="..\..\x86\Release\test32.exe" />
-    <None Include="TestInject32.exe" />
-    <None Include="TestInject64.exe" />
-  </ItemGroup>
-  <ItemGroup>
     <ResourceCompile Include="loader.rc" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

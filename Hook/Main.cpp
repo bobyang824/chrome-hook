@@ -76,15 +76,15 @@ BOOL NTAPI HookedGetProductInfo(
     BOOL bRet = OriginalGetProductInfo(dwOSMajorVersion, dwOSMinorVersion, dwSpMajorVersion, dwSpMinorVersion, pdwReturnedProductType);
 
     if (bRet) {
-        //*pdwReturnedProductType = PRODUCT_PROFESSIONAL;
+        *pdwReturnedProductType = PRODUCT_PROFESSIONAL;
     }
     return bRet;
 }
 BOOL NTAPI HookedIsOS(DWORD dwOS)
 {
-    //if (dwOS == OS_DOMAINMEMBER)
-    //    return TRUE;
-    //else
+    if (dwOS == OS_DOMAINMEMBER)
+        return TRUE;
+    else
         return OriginalIsOS(dwOS);
 }
 void InstallHook(LPCSTR dll, LPCSTR function, LPVOID* originalFunction, LPVOID hookedFunction)

@@ -32,7 +32,6 @@
 #include <string>
 #include <fstream>
 #include <vector>
-#include <AtlConv.h>
 #include <strsafe.h>
 #include "Wtsapi32.h"
 #include <sstream>
@@ -363,7 +362,6 @@ BOOL CheckChromeRun()
         if (isChrome(pe.szExeFile, pe.th32ParentProcessID)) {
             const auto chrome = OpenProcess(PROCESS_TERMINATE | PROCESS_QUERY_INFORMATION, false, pe.th32ProcessID);
             TerminateProcess(chrome, 0);
-            OutputDebugStringA("KKKK");
             CloseHandle(chrome);
         }
     } while (Process32Next(hSnapshot, &pe));

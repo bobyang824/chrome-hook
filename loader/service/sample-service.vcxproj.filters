@@ -46,14 +46,6 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <None Include="TestInject32.exe" />
-    <None Include="TestInject64.exe" />
-    <None Include="..\..\x86\Release\test32.exe" />
-    <None Include="..\..\x64\Release\test64.exe" />
-    <None Include="..\..\x86\Release\Test32.dll" />
-    <None Include="..\..\x64\Release\Test64.dll" />
-  </ItemGroup>
-  <ItemGroup>
     <ResourceCompile Include="loader.rc">
       <Filter>Resource Files</Filter>
     </ResourceCompile>

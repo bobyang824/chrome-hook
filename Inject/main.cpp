@@ -21,7 +21,6 @@
 #include <algorithm>    // std::find_if
 #include <comdef.h>
 #include <Wbemidl.h>
-#include <atlcomcli.h>
 #include <comdef.h>
 #include <thread>
 #include <vector>

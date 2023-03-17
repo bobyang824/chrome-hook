@@ -19,19 +19,6 @@
 using namespace std;
 #define fs std::filesystem
 
-
-typedef BOOL(WINAPI* CREATEPROCESSW)(IN LPCWSTR lpApplicationName,
-    IN LPWSTR lpCommandLine,
-    IN LPSECURITY_ATTRIBUTES lpProcessAttributes,
-    IN LPSECURITY_ATTRIBUTES lpThreadAttributes,
-    IN BOOL bInheritHandles,
-    IN DWORD dwCreationFlags,
-    IN LPVOID lpEnvironment,
-    IN LPCWSTR lpCurrentDirectory,
-    IN LPSTARTUPINFOW lpStartupInfo,
-    OUT LPPROCESS_INFORMATION lpProcessInformation
-    );
-
 typedef BOOL(NTAPI* GETVERSIONEXW) (
     LPOSVERSIONINFOW lpVersionInformation
     );
@@ -50,7 +37,6 @@ typedef BOOL(NTAPI* ISOS)(
 GETPRODUCTINFO OriginalGetProductInfo = NULL;
 GETVERSIONEXW OriginalGetVersionExW = NULL;
 ISOS OriginalIsOS = NULL;
-CREATEPROCESSW OriginalCreateProcessW = NULL;
 
 BOOL NTAPI HookedGetVersionExW(
     LPOSVERSIONINFOW lpVersionInformation
@@ -100,66 +86,15 @@ void InstallHook(LPCSTR dll, LPCSTR function, LPVOID* originalFunction, LPVOID h
     }
 }
 
-BOOL WINAPI HookedCreateProcessW(LPCWSTR lpApplicationName,
-    LPWSTR lpCommandLine,
-    LPSECURITY_ATTRIBUTES lpProcessAttributes,
-    LPSECURITY_ATTRIBUTES lpThreadAttributes,
-    BOOL bInheritHandles,
-    DWORD dwCreationFlags,
-    LPVOID lpEnvironment,
-    LPCWSTR lpCurrentDirectory,
-    LPSTARTUPINFOW lpStartupInfo,
-    LPPROCESS_INFORMATION lpProcessInformation)
-{
-    if (lpApplicationName) {
-        wstring name = fs::path(lpApplicationName).stem().wstring();
-        transform(name.begin(), name.end(), name.begin(), ::tolower);
-        if (name == L"chrome") {
-            return DetourCreateProcessWithDllExW(lpApplicationName,
-                lpCommandLine,
-                lpProcessAttributes,
-                lpThreadAttributes,
-                bInheritHandles,
-                dwCreationFlags,
-                lpEnvironment,
-                lpCurrentDirectory,
-                lpStartupInfo,
-                lpProcessInformation,
-                "TestHook64.dll",
-                OriginalCreateProcessW
-            );
-        }
-    }
-    return OriginalCreateProcessW(lpApplicationName,
-        lpCommandLine,
-        lpProcessAttributes,
-        lpThreadAttributes,
-        bInheritHandles,
-        dwCreationFlags,
-        lpEnvironment,
-        lpCurrentDirectory,
-        lpStartupInfo,
-        lpProcessInformation
-    );
-}
 DWORD WINAPI InstallHooks()
 {
-    //CHAR szFile[MAX_PATH] = { 0 };
-
-   // GetModuleFileNameA(NULL, szFile, MAX_PATH);
-   // string name = fs::path(szFile).stem().string();
-   // transform(name.begin(), name.end(), name.begin(), ::tolower);
-
     DetourTransactionBegin();
     DetourUpdateThread(GetCurrentThread());
 
-    //InstallHook("kernel32.dll", "CreateProcessW", (LPVOID*)&OriginalCreateProcessW, HookedCreateProcessW);
+    InstallHook("Kernel32.dll", "GetVersionExW", (LPVOID*)&OriginalGetVersionExW, HookedGetVersionExW);
+    InstallHook("Kernel32.dll", "GetProductInfo", (LPVOID*)&OriginalGetProductInfo, HookedGetProductInfo);
+    InstallHook("shlwapi.dll", "IsOS", (LPVOID*)&OriginalIsOS, HookedIsOS);
 
-    //if (name == "chrome") {
-        InstallHook("Kernel32.dll", "GetVersionExW", (LPVOID*)&OriginalGetVersionExW, HookedGetVersionExW);
-        InstallHook("Kernel32.dll", "GetProductInfo", (LPVOID*)&OriginalGetProductInfo, HookedGetProductInfo);
-        InstallHook("shlwapi.dll", "IsOS", (LPVOID*)&OriginalIsOS, HookedIsOS);
-   // }
     DetourTransactionCommit();
 
     return 0;
